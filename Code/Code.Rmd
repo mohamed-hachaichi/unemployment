@@ -1,0 +1,114 @@
+---
+title: "COVID-19 socioeconomic impacts"
+author: "Mohamed Hachaichi"
+date: '2022-03-03'
+output: pdf_document
+---
+
+### Read the libs 
+```{r, message=FALSE, error=FALSE}
+library(tidyverse)
+library(readxl)
+library(reshape2)
+library(modelsummary)
+
+```
+
+
+### Read the data 
+
+```{r error=FALSE}
+
+
+
+
+unemployment <- read_excel('../Data/Analysis/Unemployment final.xlsx')
+unemployment$growth <- ((unemployment$`2020` - unemployment$`2019`) / unemployment$`2019`) * 100
+unemployment
+
+
+youth_unemployment <- read_excel('../Data/Analysis/Youth unemployment final.xlsx')
+youth_unemployment$growth <- ((youth_unemployment$`2020` - youth_unemployment$`2019`) / youth_unemployment$`2019`) * 100
+
+youth_unemployment
+
+```
+
+
+### Bivar maps 
+
+```{r}
+
+hist(youth_unemployment$growth)
+
+```
+
+
+
+### DiD analysis 
+
+key assumption: 
+
+
+#### Unemployment 
+
+```{r, error= FALSE, message= FALSE}
+## reshape the data 
+unem_data <- melt(unemployment, id.vars = c("country","NUTS_ID","NUTS_NAME"))
+
+### create a "time" var to indicate where the treatment started (2020)    
+unem_data$time <- ifelse(unem_data$variable == 2020, 1, 0)
+
+### create a dummy variable ti identify the group exposed to the treatment. 
+
+nuts_names <- subset(unemployment, growth > 20)
+
+unem_data$treated <- ifelse(unem_data$NUTS_ID %in% nuts_names$NUTS_ID, 1, 0)
+
+did_unem = lm(value ~ treated*time, data = unem_data)
+
+summary(did_unem)
+
+```
+
+This model indicates a difference-in-differences estimate of 13% lower unemployment growth for those hit by the pandemic (eligible) than those who were not severely hit by the pandemic.
+
+
+
+#### Youth Unemployment 
+
+
+```{r}
+
+hist(youth_unemployment$growth)
+
+```
+
+```{r, error= FALSE, message= FALSE}
+## reshape the data 
+youth_unem_data <- melt(youth_unemployment, id.vars = c("country","NUTS_ID","NUTS_NAME"))
+
+### create a "time" var to indicate where the treatment started (2020)    
+youth_unem_data$time <- ifelse(youth_unem_data$variable == 2020, 1, 0)
+
+### create a dummy variable ti identify the group exposed to the treatment. 
+
+nuts_names <- subset(youth_unemployment, growth > 30)
+
+youth_unem_data$treated <- ifelse(youth_unem_data$NUTS_ID %in% nuts_names$NUTS_ID, 1, 0)
+
+did_youth = lm(value ~ treated*time, data = youth_unem_data)
+
+summary(did_youth)
+
+```
+
+#### all the models togother 
+
+```{r}
+
+modelsummary(list(m1,m2))
+
+
+```
+
