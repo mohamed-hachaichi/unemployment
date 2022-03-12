@@ -18,96 +18,79 @@ library(modelsummary)
 ### Read the data 
 
 ```{r error=FALSE}
+# read the data 
+ds <- read_excel('../Data/Analysis/DS.xlsx')
+# add the zscore 
+ds <- ds %>%
+  mutate(zscore = (ds$Death_rate - mean(ds$Death_rate) / sd(ds$Death_rate)))
 
+# Create a dummy variable to identify the group exposed to the treatment
 
+ds$treated = ifelse(ds$zscore >= 0, 1, 0) 
 
+# create the datasets for unemployment and youth unemployment 
 
-unemployment <- read_excel('../Data/Analysis/Unemployment final.xlsx')
-unemployment$growth <- ((unemployment$`2020` - unemployment$`2019`) / unemployment$`2019`) * 100
-unemployment
+## 1 unemployment 
 
+unem <- ds %>%
+  select(country, NUTS_ID, Unemployment_2020, Death_rate, Unemployment_2019, 'URBAN-RURAL',Border, METRO, zscore, treated) %>%
+  rename('2020' = Unemployment_2020,
+         '2019' = Unemployment_2019)
+unem <- melt(unem, id.vars = c('country', 'NUTS_ID', 'Death_rate', 'URBAN-RURAL', 'Border', 'METRO', 'zscore', "treated"))
+## Create a dummy variable to indicate the time when the treatment started
+unem$time = ifelse(unem$variable == 2020, 1, 0)
 
-youth_unemployment <- read_excel('../Data/Analysis/Youth unemployment final.xlsx')
-youth_unemployment$growth <- ((youth_unemployment$`2020` - youth_unemployment$`2019`) / youth_unemployment$`2019`) * 100
+## 2 youth 
 
-youth_unemployment
+youth <- ds %>%
+  select(country, NUTS_ID, Youth_2020, Death_rate, Youth_2019, "URBAN-RURAL",Border, METRO, zscore, treated) %>%
+  rename('2020' = Youth_2020,
+         '2019' = Youth_2019)
+
+youth <- melt(youth, id.vars = c('country', 'NUTS_ID', 'Death_rate', 'URBAN-RURAL', 'Border', 'METRO', 'zscore', "treated"))
+## Create a dummy variable to indicate the time when the treatment started
+youth$time = ifelse(youth$variable == 2020, 1, 0)
+
 
 ```
-
-
-### Bivar maps 
-
-```{r}
-
-hist(youth_unemployment$growth)
-
-```
-
 
 
 ### DiD analysis 
 
-key assumption: 
-
+key assumption: zscore(death rate) >= 0 are the regions that were treated.
 
 #### Unemployment 
 
 ```{r, error= FALSE, message= FALSE}
-## reshape the data 
-unem_data <- melt(unemployment, id.vars = c("country","NUTS_ID","NUTS_NAME"))
 
-### create a "time" var to indicate where the treatment started (2020)    
-unem_data$time <- ifelse(unem_data$variable == 2020, 1, 0)
-
-### create a dummy variable ti identify the group exposed to the treatment. 
-
-nuts_names <- subset(unemployment, growth > 20)
-
-unem_data$treated <- ifelse(unem_data$NUTS_ID %in% nuts_names$NUTS_ID, 1, 0)
-
-did_unem = lm(value ~ treated*time, data = unem_data)
-
-summary(did_unem)
+total_unem = lm(value ~ treated*time, data = unem)
+tidy(total_unem)
 
 ```
 
-This model indicates a difference-in-differences estimate of 13% lower unemployment growth for those hit by the pandemic (eligible) than those who were not severely hit by the pandemic.
+This model indicates a difference-in-differences estimate of 20% lower unemployment growth for those hit by the pandemic (eligible) than those who were not severely hit by the pandemic.
+
+OR: The pandemic causal effect of the pandemic it causes an increase of 20% in unemployment rates (%), 
 
 
 
 #### Youth Unemployment 
 
 
-```{r}
-
-hist(youth_unemployment$growth)
-
-```
-
 ```{r, error= FALSE, message= FALSE}
-## reshape the data 
-youth_unem_data <- melt(youth_unemployment, id.vars = c("country","NUTS_ID","NUTS_NAME"))
-
-### create a "time" var to indicate where the treatment started (2020)    
-youth_unem_data$time <- ifelse(youth_unem_data$variable == 2020, 1, 0)
-
-### create a dummy variable ti identify the group exposed to the treatment. 
-
-nuts_names <- subset(youth_unemployment, growth > 30)
-
-youth_unem_data$treated <- ifelse(youth_unem_data$NUTS_ID %in% nuts_names$NUTS_ID, 1, 0)
-
-did_youth = lm(value ~ treated*time, data = youth_unem_data)
-
-summary(did_youth)
+total_youth = lm(value ~ treated*time, data = youth)
+summary(total_youth)
 
 ```
+
+
+
 
 #### all the models togother 
 
 ```{r}
 
-modelsummary(list(m1,m2))
+modelsummary(list(total_unem,total_youth))
 
 
 ```
