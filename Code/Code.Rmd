@@ -6,12 +6,17 @@ output: pdf_document
 ---
 
 ### Read the libs 
-```{r, message=FALSE, error=FALSE}
+```{r error=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 library(tidyverse)
 library(readxl)
 library(reshape2)
 library(modelsummary)
 
+
+# load package
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
 ```
 
 
@@ -26,7 +31,7 @@ ds <- ds %>%
 
 # Create a dummy variable to identify the group exposed to the treatment
 
-ds$treated = ifelse(ds$zscore >= 0, 1, 0) 
+ds$treated = ifelse(ds$zscore >= 1, 1, 0) 
 
 # create the datasets for unemployment and youth unemployment 
 
@@ -64,7 +69,18 @@ key assumption: zscore(death rate) >= 0 are the regions that were treated.
 ```{r, error= FALSE, message= FALSE}
 
 total_unem = lm(value ~ treated*time, data = unem)
-tidy(total_unem)
+
+urban_unem = lm(value ~ treated*time, data = unem %>% filter(unem$`URBAN-RURAL` == 1))
+
+rural_unem = lm(value ~ treated*time, data = unem %>% filter(unem$`URBAN-RURAL` == 3))
+
+intermediate_unem = lm(value ~ treated*time, data = unem %>% filter(unem$`URBAN-RURAL` == 2))
+
+border_unem = lm(value ~ treated*time, data = unem %>% filter(unem$Border == 1))
+
+metro_unem = lm(value ~ treated*time, data = unem %>% filter(unem$METRO == 1))
+
+tab_model(metro_unem)
 
 ```
 
@@ -78,8 +94,21 @@ OR: The pandemic causal effect of the pandemic it causes an increase of 20% in u
 
 
 ```{r, error= FALSE, message= FALSE}
+
 total_youth = lm(value ~ treated*time, data = youth)
-summary(total_youth)
+
+urban_youth = lm(value ~ treated*time, data = youth %>% filter(youth$`URBAN-RURAL` == 1))
+
+rural_youth = lm(value ~ treated*time, data = youth %>% filter(youth$`URBAN-RURAL` == 3))
+
+intermediate_youth = lm(value ~ treated*time, data = youth %>% filter(youth$`URBAN-RURAL` == 2))
+
+border_youth = lm(value ~ treated*time, data = youth %>% filter(youth$Border == 1))
+
+metro_youth = lm(value ~ treated*time, data = youth %>% filter(youth$METRO == 1))
+
+tab_model(total_youth)
+
 
 ```
 
@@ -90,7 +119,7 @@ summary(total_youth)
 
 ```{r}
 
-modelsummary(list(total_unem,total_youth))
+tab_model(total_unem,total_youth)
 
 
 ```
