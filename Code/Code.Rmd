@@ -25,13 +25,21 @@ library(sjlabelled)
 ```{r error=FALSE}
 # read the data 
 ds <- read_excel('../Data/Analysis/DS.xlsx')
+
+# drop nan
+ds <- ds %>% 
+  drop_na()
+
+
 # add the zscore 
 ds <- ds %>%
-  mutate(zscore = (ds$Death_rate - mean(ds$Death_rate) / sd(ds$Death_rate)))
+  mutate(zscore = (ds$Death_rate - mean(ds$Death_rate) / sd(ds$Death_rate))) %>%
+  as_data_frame()
+  
 
 # Create a dummy variable to identify the group exposed to the treatment
 
-ds$treated = ifelse(ds$zscore >= 1, 1, 0) 
+ds$treated = ifelse(ds$zscore >= 5, 1, 0) 
 
 # create the datasets for unemployment and youth unemployment 
 
@@ -41,9 +49,13 @@ unem <- ds %>%
   select(country, NUTS_ID, Unemployment_2020, Death_rate, Unemployment_2019, 'URBAN-RURAL',Border, METRO, zscore, treated) %>%
   rename('2020' = Unemployment_2020,
          '2019' = Unemployment_2019)
-unem <- melt(unem, id.vars = c('country', 'NUTS_ID', 'Death_rate', 'URBAN-RURAL', 'Border', 'METRO', 'zscore', "treated"))
+
+
+unem <- melt(unem, id.vars = c('country', 'NUTS_ID', 'Death_rate', 'URBAN-RURAL', 'Border', 'METRO', 'zscore', "treated"), variable.name = 'Date')
+
+
 ## Create a dummy variable to indicate the time when the treatment started
-unem$time = ifelse(unem$variable == 2020, 1, 0)
+unem$time <- ifelse(unem$Date == 2020, 1, 0)
 
 ## 2 youth 
 
@@ -52,10 +64,69 @@ youth <- ds %>%
   rename('2020' = Youth_2020,
          '2019' = Youth_2019)
 
-youth <- melt(youth, id.vars = c('country', 'NUTS_ID', 'Death_rate', 'URBAN-RURAL', 'Border', 'METRO', 'zscore', "treated"))
+youth <- melt(youth, id.vars = c('country', 'NUTS_ID', 'Death_rate', 'URBAN-RURAL', 'Border', 'METRO', 'zscore', "treated"), variable.name = 'Date')
 ## Create a dummy variable to indicate the time when the treatment started
-youth$time = ifelse(youth$variable == 2020, 1, 0)
 
+youth$time = ifelse(youth$Date == 2020, 1, 0)
+
+
+```
+
+
+```{r}
+ds %>%
+  group_by(treated) %>%
+  count()
+
+```
+
+
+```{r}
+hist(ds$zscore)
+```
+
+
+```{r}
+
+hist(ds$Unemployment_2020)
+
+```
+```{r}
+hist(ds$Unemployment_2019)
+```
+
+```{r}
+hist(ds$Youth_2019)
+
+```
+
+```{r}
+hist(ds$Youth_2020)
+```
+
+
+
+```{r}
+unem %>%
+  group_by(Date) %>%
+  summarise(mean = mean(value, na.rm = TRUE))
+
+```
+
+```{r}
+unem %>%
+  group_by(Date, treated) %>%
+  summarise(mean = mean(value, na.rm = TRUE)) %>%
+  ggplot(aes(x = Date, y = mean, color = treated)) +
+  geom_point()
+
+```
+
+
+```{r}
+youth %>%
+  group_by(Date) %>%
+  summarise(mean = mean(value, na.rm = TRUE))
 
 ```
 
@@ -80,7 +151,7 @@ border_unem = lm(value ~ treated*time, data = unem %>% filter(unem$Border == 1))
 
 metro_unem = lm(value ~ treated*time, data = unem %>% filter(unem$METRO == 1))
 
-tab_model(metro_unem)
+summary(border_unem)
 
 ```
 
@@ -107,7 +178,7 @@ border_youth = lm(value ~ treated*time, data = youth %>% filter(youth$Border == 
 
 metro_youth = lm(value ~ treated*time, data = youth %>% filter(youth$METRO == 1))
 
-tab_model(total_youth)
+summary(metro_youth)
 
 
 ```
