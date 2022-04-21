@@ -195,3 +195,12 @@ tab_model(total_unem,total_youth)
 
 ```
 
+
+### 2SLS 
+
+```{r}
+
+
+
+```
+
